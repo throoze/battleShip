@@ -156,6 +156,45 @@ disposicionValida(F,C,T,D,F1,C1) :-
     read(C1),nl.
     % VERIFICAR QUE SEA VALIDO
 
+% iniLista(+X,Y) :- Inicializa una lista Y de tamaño X con puras a (agua)
+%                   dentro.
+iniLista(0,Y):- Y=[],!.
+iniLista(X,Y):-
+    Y = [h|Ys],
+    X1 is X-1,
+    iniLista(X1,Ys).
+
+% impLista(L) :- Imprime en pantalla una lista L elemento por elemento.
+impLista([]).
+impLista(L):-
+    L= [X|Y],
+    write(X),
+    impLista(Y).
+
+% esHlista(h,+N,N1) :-  Si un elemento de una lista es una h suma uno a N
+%                       y lo devuelve en N1.
+esHlista(h,N,N1):-
+    N1 is N+1,
+    !.
+esHlista(_,_,_):- !.
+
+% iterLista(+L,N) :-    Recorre una lista L contando cuantos elementos son h
+%                       (hundido) y devuelve el número total de h en N.
+iterLista([],_).
+iterLista(L,N):-
+    itLaux(L,N,0).
+
+% itLaux(+L,N,+Ac) :-   Auxiliar de iterLista, para llevar un acumulador
+%                       Ac en la recursión.
+itLaux([X|[]],N,Ac):-
+    esHlista(X,Ac,Ac1),
+    N = Ac1,
+    !.
+itLaux(L,N,Ac):-
+    L = [Z|[X|Y]],
+    esHlista(Z,Ac,Ac1),
+    itLaux([X|Y],N,Ac1).
+
 %%%%%%%%%%%%%%%%%%%% PREDICADOS REQUERIDOS POR EL ENUNCIADO %%%%%%%%%%%%%%%%%%%%
 
 % jugar :- Se satisface una vez se ha obtenido las dimensiones del tablero, el
@@ -176,31 +215,10 @@ jugar :-
     tableroInicial(F,C,T),
     %hacerJugadas.
 
-% tableroInicial(F, C, T) :- Se satisface si T representa un tablero de F filas
+% tableroInicial(F,C,T) :- Se satisface si T representa un tablero de F filas
 %                           y C columnas donde todas sus posiciones corresponden
 %                           a agua (posiciones donde no se sabe si existe o no
 %                           barcos).
-
-% mostrarTablero(T) :- Muestra en pantalla una representación clara del estado
-%                      actual del tablero T, diferenciando claramente las casi-
-%                      llas con agua, fallos, barcos golpeados, y barcos hundi-
-%                      dos.
-
-% estadoFinal(T) :- Se satisface si en T se han hundido todos los barcos origi-
-%                   nalmente ocultos.
-
-% ataque(+T0, T1, +F, +C) :- Se satisface los tableros T0 y T1 corresponden a
-%                           tableros con F filas y C columnas, y T1 corresponde
-%                           a realizar un disparo sobre el tablero T0.
-
-% Inicializa una lista Y de tamaño X con puras a dentro
-iniLista(0,Y):- Y=[],!.
-iniLista(X,Y):-
-    Y = [h|Ys],
-    X1 is X-1,
-    iniLista(X1,Ys).
-
-% Inicializa el tablero visible de la partida T con F filas C columnas
 tableroInicial(0,_,T):- T=[],!.
 tableroInicial(F,C,T):-
     iniLista(C,Y),
@@ -208,14 +226,10 @@ tableroInicial(F,C,T):-
     F1 is F-1,
     tableroInicial(F1,C,Ts).
 
-% Imprime en pantalla una lista
-impLista([]).
-impLista(L):-
-    L= [X|Y],
-    write(X),
-    impLista(Y).
-
-% Muestra en pantalla el estado actual del tablero de juego
+% mostrarTablero(T) :- Muestra en pantalla una representación clara del estado
+%                      actual del tablero T, diferenciando claramente las casi-
+%                      llas con agua, fallos, barcos golpeados, y barcos hundi-
+%                      dos.
 mostrarTablero([]).
 mostrarTablero(T):-
     T = [X|Y],
@@ -223,28 +237,8 @@ mostrarTablero(T):-
     nl,
     mostrarTablero(Y).
 
-% Si un elemento de una lista es una h suma uno a N
-esHlista(h,N,N1):-
-    N1 is N+1,
-    !.
-esHlista(_,_,_):- !.
-
-% Recorre una lista L elemento por elemento
-iterLista([],_).
-iterLista(L,N):-
-    itLaux(L,N,0).
-
-% Auxiliar de iterLista, para llevar un acumulador en la recursión
-itLaux([X|[]],N,Ac):-
-    esHlista(X,Ac,Ac1),
-    N = Ac1,
-    !.
-itLaux(L,N,Ac):-
-    L = [Z|[X|Y]],
-    esHlista(Z,Ac,Ac1),
-    itLaux([X|Y],N,Ac1).
-
-% Indica si se hundieron todos los barcos, se satisface si el número de posiciones iniciales de los barcos es igual al número de h´s en el tablero
+% estadoFinal(T) :- Se satisface si en T se han hundido todos los barcos origi-
+%                   nalmente ocultos.
 estadoFinal(T):-
     estadoFinalAux(T,N,0),
     juego(_,_,_,O),
@@ -254,9 +248,12 @@ estadoFinalAux([X|[]],N,Ac):-
     iterLista(X,Nn),
     N is Ac + Nn,
     !.
-
 estadoFinalAux(T,N,Ac):-
     T= [X|Y],
     iterLista(X,Nn),
     Ac1 is Ac+Nn,
     estadoFinalAux(Y,N,Ac1).
+
+% ataque(+T0, T1, +F, +C) :- Se satisface los tableros T0 y T1 corresponden a
+%                           tableros con F filas y C columnas, y T1 corresponde
+%                           a realizar un disparo sobre el tablero T0.
