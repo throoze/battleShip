@@ -165,7 +165,7 @@ obtenerFila([H|T],F1,Row) :-
 obtenerElemLista([E|_],0,E).
 obtenerElemLista([_|T],I,E) :-
     I1 is I - 1,
-    getElemLista(T,I1,E).
+    obtenerElemLista(T,I1,E).
 
 % obtenerElemMatriz(M,F,C,E) :- Se satisface si E es el elemento en la F-ésima
 %                               fila, en la C-ésima columna de la lista de lis-
