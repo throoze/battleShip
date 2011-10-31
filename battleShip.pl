@@ -89,22 +89,23 @@ mensajeBienvenida :- write('                                     |__'),nl,
 obtenerDimensiones(F,C,NB) :-
     dimensionValida(F,'Filas'),
     dimensionValida(C,'Columnas'),
-    write('Ingrese el Número de Filas\n>> '),
-    read(F),nl,write('Ingrese el Número de Columnas\n>> '),
-    read(C),nl,write('Ingrese el Número de Barcos\n>> '),
-    read(NB),nl.
+    cantBarcosValida(NB).
 
 dimensionValida(X,D) :-
-    write('Ingrese el Número de'),
+    repeat,
+    write('Ingrese el Número de '),
     write(D),
-    write('\n>> '),
+    write(' (Un número entre 1 y 20)\n>> '),
     read(X),nl,
-    1 <= X, X <= 20.
+    1 =< X, X =< 20,!.
 
-cantBarcosValida(NB) :-
-    write('Ingrese el Número de Barcos\n>> '),
-    read(NB),nl.
-    % VERIFICAR QUE SEA VALIDO
+cantBarcosValida(F,C,NB) :-
+    repeat,
+    write('Ingrese una cantidad de barcos valida\n>> '),
+    read(NB),nl,
+    N is F * C,
+    1 =< NB,
+    NB =< N,!.
 
 % obtenerNumBalas(B) :- Se encarga de pedir al usuario el número de balas a ser
 %                       utilizadas por el programa, e instancia a B con ese va-
@@ -136,20 +137,23 @@ obtenerBarco(F,C) :- write('Información de barco:'),nl,
     assertz(barco(T,D,F1,C1,v)).
 
 tamanoValido(T,F,C) :-
-    write('Ingrese el Tamaño\n>> ')
-    read(T),nl,
+    repeat,
+    write('Ingrese el Tamaño\n>> '),
+    read(T),nl.
     % VERIFICAR QUE SEA VALIDO
 
 direccionValida(D) :-
-    write('Ingrese la dirección\n>> ')
-    read(D),nl,
+    repeat,
+    write('Ingrese la dirección\n>> '),
+    read(D),nl.
     % VERIFICAR QUE SEA VALIDO
 
 disposicionValida(F,C,T,D,F1,C1) :-
-    write('Ingrese una Fila Inicial válida\n>> ')
+    repeat,
+    write('Ingrese una Fila Inicial válida\n>> '),
     read(F1),nl,
-    write('Ingrese la Columna Inicial\n>> ')
-    read(C1),nl,
+    write('Ingrese la Columna Inicial\n>> '),
+    read(C1),nl.
     % VERIFICAR QUE SEA VALIDO
 
 %%%%%%%%%%%%%%%%%%%% PREDICADOS REQUERIDOS POR EL ENUNCIADO %%%%%%%%%%%%%%%%%%%%
@@ -166,11 +170,11 @@ jugar :-
     mensajeBienvenida,
     obtenerDimensiones(F,C,NB),
     obtenerBarcos(F,C,NB),
-    %tableroInicial(TB),
-    %asserta(disposicion(TB)),
+    tableroInicial(TB),
+    asserta(disposicion(TB)),
     obtenerNumBalas(F,C,B).%,
-    %tableroInicial(F,C,T),
-    %hacerJugadas().
+    tableroInicial(F,C,T),
+    %hacerJugadas.
 
 % tableroInicial(F, C, T) :- Se satisface si T representa un tablero de F filas
 %                           y C columnas donde todas sus posiciones corresponden
@@ -191,68 +195,68 @@ jugar :-
 
 % Inicializa una lista Y de tamaño X con puras a dentro
 iniLista(0,Y):- Y=[],!.
-iniLista(X,Y):- 
-	Y = [h|Ys],
-	X1 is X-1,
-	iniLista(X1,Ys).
-	
+iniLista(X,Y):-
+    Y = [h|Ys],
+    X1 is X-1,
+    iniLista(X1,Ys).
+
 % Inicializa el tablero visible de la partida T con F filas C columnas
 tableroInicial(0,_,T):- T=[],!.
-tableroInicial(F,C,T):- 
-	iniLista(C,Y),
-	T = [Y|Ts],
-	F1 is F-1,
-	tableroInicial(F1,C,Ts).
-	
+tableroInicial(F,C,T):-
+    iniLista(C,Y),
+    T = [Y|Ts],
+    F1 is F-1,
+    tableroInicial(F1,C,Ts).
+
 % Imprime en pantalla una lista
 impLista([]).
 impLista(L):-
-	L= [X|Y],
-	write(X),
-	impLista(Y).
+    L= [X|Y],
+    write(X),
+    impLista(Y).
 
 % Muestra en pantalla el estado actual del tablero de juego
 mostrarTablero([]).
 mostrarTablero(T):-
-	T = [X|Y],
-	impLista(X),
-	nl,
-	mostrarTablero(Y).
+    T = [X|Y],
+    impLista(X),
+    nl,
+    mostrarTablero(Y).
 
 % Si un elemento de una lista es una h suma uno a N
-esHlista(h,N,N1):- 
-	N1 is N+1,
-	!.
+esHlista(h,N,N1):-
+    N1 is N+1,
+    !.
 esHlista(_,_,_):- !.
-	
+
 % Recorre una lista L elemento por elemento
 iterLista([],_).
 iterLista(L,N):-
-	itLaux(L,N,0).
-	
+    itLaux(L,N,0).
+
 % Auxiliar de iterLista, para llevar un acumulador en la recursión
 itLaux([X|[]],N,Ac):-
-	esHlista(X,Ac,Ac1),
-	N = Ac1,
-	!.
+    esHlista(X,Ac,Ac1),
+    N = Ac1,
+    !.
 itLaux(L,N,Ac):-
-	L = [Z|[X|Y]],
-	esHlista(Z,Ac,Ac1),
-	itLaux([X|Y],N,Ac1).
+    L = [Z|[X|Y]],
+    esHlista(Z,Ac,Ac1),
+    itLaux([X|Y],N,Ac1).
 
 % Indica si se hundieron todos los barcos, se satisface si el número de posiciones iniciales de los barcos es igual al número de h´s en el tablero
-estadoFinal(T):- 
-	estadoFinalAux(T,N,0),
-	juego(_,_,_,O),
-	O = N,
-	!.
+estadoFinal(T):-
+    estadoFinalAux(T,N,0),
+    juego(_,_,_,O),
+    O = N,
+    !.
 estadoFinalAux([X|[]],N,Ac):-
-	iterLista(X,Nn),
-	N is Ac + Nn,
-	!.
-	
+    iterLista(X,Nn),
+    N is Ac + Nn,
+    !.
+
 estadoFinalAux(T,N,Ac):-
-	T= [X|Y],
-	iterLista(X,Nn),
-	Ac1 is Ac+Nn,
-	estadoFinalAux(Y,N,Ac1).
+    T= [X|Y],
+    iterLista(X,Nn),
+    Ac1 is Ac+Nn,
+    estadoFinalAux(Y,N,Ac1).
