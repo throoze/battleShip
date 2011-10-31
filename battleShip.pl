@@ -50,7 +50,6 @@
 size([],0).
 size([X|Y],N) :-
     sizeAux([X|Y],N,0).
-
 % sizeAux(L,N,Ac) :- Predicado auxiliar que nos devuelve en N el tamaño de la
 %                    lista pasada como primer parámetro, usando recursión de co-
 %                    la. Para ello, se vale del acumulador Ac.
@@ -83,14 +82,9 @@ mensajeBienvenida :- write('                                     |__'),nl,
     write('Recuerde escribir un punto (.) después de cada valor introducido...'),
     nl,nl.
 
-% obtenerDimensiones(F,C,NB) :- Se encarga de pedirle al usuario las dimensiones
-%                               del tablero con el que se va a jugar (F filas
-%                               por C columnas).
-obtenerDimensiones(F,C,NB) :-
-    dimensionValida(F,'Filas'),
-    dimensionValida(C,'Columnas'),
-    cantBarcosValida(NB).
-
+% dimensionValida(X,+D) :- Solicita por entrada estándar un valor válido para la
+%                          dimensión del tablero especificada por D, e instancia
+%                          X con dicho valor.
 dimensionValida(X,D) :-
     repeat,
     write('Ingrese el Número de '),
@@ -99,6 +93,10 @@ dimensionValida(X,D) :-
     read(X),nl,
     1 =< X, X =< 20,!.
 
+% cantBarcosValida(+F,+C,NB) :- Solicita por entrada estándar un valor válido
+%                               para la cantidad de barcos a colocar en el ta-
+%                               blero de tamaño FxC. Una vez obtenido un valor
+%                               válido, instancia a NB con dicho valor.
 cantBarcosValida(F,C,NB) :-
     repeat,
     write('Ingrese una cantidad de barcos valida\n>> '),
@@ -107,11 +105,145 @@ cantBarcosValida(F,C,NB) :-
     1 =< NB,
     NB =< N,!.
 
+% obtenerDimensiones(F,C,NB) :- Se encarga de pedirle al usuario las dimensiones
+%                               del tablero con el que se va a jugar (F filas
+%                               por C columnas).
+obtenerDimensiones(F,C,NB) :-
+    dimensionValida(F,'Filas'),
+    dimensionValida(C,'Columnas'),
+    cantBarcosValida(NB),
+    asserta(juego(F,C,NB,0)).
+
 % obtenerNumBalas(B) :- Se encarga de pedir al usuario el número de balas a ser
 %                       utilizadas por el programa, e instancia a B con ese va-
-%                       lor.
-obtenerNumBalas(B) :- write('Ingrese el Número de balas a utilizar\n>> '),nl,
-    read(B),nl.
+%                       lor. En caso de no obtener un número de balas válido,
+%                       lo solicita de nuevo.
+obtenerNumBalas(B) :-
+    repeat,
+    write('Ingrese el Número de balas a utilizar\n>> '),
+    read(B),nl,
+    juego(F,C,_,P),
+    T is F * C + 1,
+    P < B, B < T,
+    !.
+
+% tamanoValido(T) :- Pide por la entrada estándar, un valor para el tamaño
+%                    de un barco, y verifica que sea válido. Si es inválido,
+%                    vuelve a pedir el valor. Una vez obtenido un valor vá-
+%                    lido, T queda instanciado a dicho valor.
+tamanoValido(T) :-
+    juego(F,C,_,_),
+    repeat,
+    write('Ingrese el Tamaño\n>> '),
+    read(T),
+    T =< F, T =< C,
+    nl,!.
+
+% orientacionValida(D) :-  Pide por la entrada estándar, un valor para la direc-
+%                        ción de un barco, y verifica que sea válido. Si es in-
+%                        válido, vuelve a pedir el valor. Una vez obtenido un
+%                        valor válido, D queda instanciado a dicho valor.
+orientacionValida(D) :-
+    repeat,
+    write('Ingrese la dirección\n>> '),
+    read(D),nl,
+    orientacionValidaAux(D).
+% orientacionValidaAux(+D) :- Se satisface si D sea o h o v.
+orientacionValidaAux(D) :- D = h.
+orientacionValidaAux(D) :- D = v.
+
+% obtenerFila(+F,+C,+M,+F1,Row) :- Se satisface si Row es la fila F1 del tablero
+%                                  de tamaño FxC, M. Debe cumplirse que F1 <= F.
+obtenerFila([H|T],0,Row) :-
+    Row = H.
+obtenerFila([H|T],F1,Row) :-
+    F11 is F1 - 1,
+    obtenerFila(T,F11,Row).
+
+% obtenerElemento(+L,+I,E) :- Se satisface si E es el I-ésimo elemento de la
+%                             lista L. Debe cumplirse: size(L,N), 0 =< I, I < N.
+obtenerElemLista([E|_],0,E).
+obtenerElemLista([_|T],I,E) :-
+    I1 is I - 1,
+    getElemLista(T,I1,E).
+
+% obtenerElemMatriz(M,F,C,E) :- Se satisface si E es el elemento en la F-ésima
+%                               fila, en la C-ésima columna de la lista de lis-
+%                               tas (Matriz) M. Debe cumplirse: 0 =< F, 0 =< C,
+%                               M = [H|T], size(M,Nf), size(H,Nc), F =< Nf,
+%                               C =< Nc.
+obtenerElemMatriz(M,F,C,E) :-
+    obtenerElemLista(M,F,Fila),
+    obtenerElemLista(Fila,C,E).
+
+% obtenerColumna(+F,+C,+M,+C1,Col) :- Se satisface si Col es la columna C1 del
+%                        tablero de tamaño FxC, M. Debe cumplirse que C1 <= C.
+obtenerColumna(F,M,C1,Col) :-
+    obtColAux()
+
+% obtenerEspacio(+T,+D,+F1,+C1,L) :- Se satisface si L es una lista que repre-
+%                       senta el contenido de las posiciones en el tablero de un
+%                       barco de tamaño T, orientación D, y cuya proa esta en
+%                       las coordenadas (F1,C1).
+obtenerEspacio(T,h,F1,C1,L) :-
+    disposicion(M),
+    obtenerFila(M,F1,Row),
+    obtenerEspacioAux(T,h,C1,Row,L).
+obtenerEspacio(T,v,F1,C1,L) :-
+    disposicion(M),
+    obtenerColumna(F,M,C1,Col),
+    obtenerEspacioAux(T,v,F1,Col,L).
+
+% busqueda(+L,+E) :- Se satisface si el elemento E está en la lista L.
+busqueda([],_) :- fail.
+busqueda([E|T],E).
+busqueda([_|T],E) :-
+    busqueda(T,E).
+
+% validarSolapamiento(T,D,F1,C1) :- Se satisface si el barco con el tamaño T, la
+%                       orientación D, y cuya proa esta ubicada en las coordena-
+%                       das (F1,C1) no se solapa con ningún barco previamente
+%                       ubicado en el tablero.
+validarSolapamiento(T,D,F1,C1) :-
+    obtenerEspacio(T,D,F1,C1,L),
+    not(busqueda(L,b)).
+
+% validarDireccion(+T,+D,+F1,+C1) :- Se satisface si el barco de tamaño T, con
+%                                la orientación D, cuya proa está ubicada en las
+%                                coordendas (F1,C1) "cabe" en el tablero confi-
+%                                gurado para la partida, las coordenadas (F1,C1)
+%                                son no negativas, y no hay ningun otro barco
+%                                ubicado en alguna posición que toque el barco
+%                                que está siendo validado.
+validarDireccion(T,D,F1,C1) :-
+    juego(F,C,_,_),
+    0 =< F1, F1 < F,
+    0 =< C1, C1 < C,
+    validarSolapamiento(T,D,F1,C1).
+
+% disposicionValida(+T,+D,F1,C1) :- Solicita por la entrada estándar un
+%                       valor válido para la disposición de un barco en el ta-
+%                       blero. Una vez obtenidos valores válidos, instancia F1 y
+%                       C1 con dichos valores.
+disposicionValida(T,D,F1,C1) :-
+    repeat,
+    write('Ingrese una Fila Inicial válida\n>> '),
+    read(F1),nl,
+    write('Ingrese la Columna Inicial\n>> '),
+    read(C1),nl,
+    validarDireccion(T,D,F1,C1),
+    !.
+
+% obtenerBarco(+F,+C) :- Pide al usuario por entrada estándar la información re-
+%                        lativa a un barco en específico, y almacena en la base
+%                        de conocimientos una estrucura que representa a dicho
+%                        barco. Además, se asegura de que el barco sea válido
+%                        para un tablero de dimensiones F filas y C columnas.
+obtenerBarco(F,C) :- write('Información de barco:'),nl,
+    tamanoValido(T),
+    direccionValida(D),
+    disposicionValida(F,C,T,D,F1,C1),
+    assertz(barco(T,D,F1,C1,v)).
 
 % obtenerBarcos(+F,+C,+NB) :- Se encarga de obtener de la entrada estándar,
 %                         los parámetros que definen a cada barco, y almacenar
@@ -124,37 +256,6 @@ obtenerNumBalas(B) :- write('Ingrese el Número de balas a utilizar\n>> '),nl,
 obtenerBarcos(F,C,NB) :- obtenerBarco(F,C),
     N1 is NB - 1,
     obtenerBarcos(F,C,N1).
-
-% obtenerBarco(+F,+C) :- Pide al usuario por entrada estándar la información re-
-%                        lativa a un barco en específico, y almacena en la base
-%                        de conocimientos una estrucura que representa a dicho
-%                        barco. Además, se asegura de que el barco sea válido
-%                        para un tablero de dimensiones F filas y C columnas.
-obtenerBarco(F,C) :- write('Información de barco:'),nl,
-    tamanoValido(T,F,C),
-    direccionValida(D),
-    disposicionValida(F,C,T,D,F1,C1),
-    assertz(barco(T,D,F1,C1,v)).
-
-tamanoValido(T,F,C) :-
-    repeat,
-    write('Ingrese el Tamaño\n>> '),
-    read(T),nl.
-    % VERIFICAR QUE SEA VALIDO
-
-direccionValida(D) :-
-    repeat,
-    write('Ingrese la dirección\n>> '),
-    read(D),nl.
-    % VERIFICAR QUE SEA VALIDO
-
-disposicionValida(F,C,T,D,F1,C1) :-
-    repeat,
-    write('Ingrese una Fila Inicial válida\n>> '),
-    read(F1),nl,
-    write('Ingrese la Columna Inicial\n>> '),
-    read(C1),nl.
-    % VERIFICAR QUE SEA VALIDO
 
 % iniLista(+X,Y) :- Inicializa una lista Y de tamaño X con puras a (agua)
 %                   dentro.
@@ -208,9 +309,9 @@ itLaux(L,N,Ac):-
 jugar :-
     mensajeBienvenida,
     obtenerDimensiones(F,C,NB),
-    obtenerBarcos(F,C,NB),
     tableroInicial(TB),
     asserta(disposicion(TB)),
+    obtenerBarcos(F,C,NB),
     obtenerNumBalas(F,C,B).%,
     tableroInicial(F,C,T),
     %hacerJugadas.
