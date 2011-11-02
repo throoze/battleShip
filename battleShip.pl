@@ -39,7 +39,16 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % BASE DE CONOCIMIENTOS ESTÁTICA:
+
+% BASE DE CONOCIMIENTOS DINÁMICA:
 :- dynamic lista/1.
+:- dynamic matriz/1.
+
+% :- dynamic juego/4.
+% Estructura que guarda parámetros de inicialización de la partida. Éstos co-
+% rresponden:
+%   juego(#Filas, #Columnas, #Barcos, Suma de los tamaños de todos los barcos).
+
 
 
 % PREDICADOS:
@@ -127,15 +136,49 @@ obtenerNumBalas(B) :-
     P < B, B < T,
     !.
 
+% actualizarLista(+L,+I,+E,Lf) :- Se satisface si Lf es una lista idéntica a L,
+%                 exceptuando en el elemento en la posición I, donde el elemento
+%                 original es sustituido por E.
+actualizarLista(L,I,E,Lf) :-
+    actualizarListaAux(I,[],E,L,Lf).
+% actualizarListaAux(I,H,E,T,Lf) :- Se satisface si Lf es una lista idéntica a
+%              L, exceptuando en el elemento en la posición I, donde el elemento
+%              original es sustituido por E. H es una lista auxiliar que acumula
+%              la cabeza recorrida de la lista.
+actualizarListaAux(0,H,E,[_|T],Lf) :-
+    Laux = [E|T],
+    append(H,Laux,Lf),!.
+actualizarListaAux(I,H,E,[E1|T],Lf) :-
+    I1 is I - 1,
+    append(H,[E1],Laux),
+    actualizarListaAux(I1,Laux,E,T,Lf).
+
+% actualizarMatriz(M,I,J,E,Mf) :-
+actualizarMatriz(M,I,J,E,Mf) :-
+    actualizarMatrizAux(I,J,[],M,E,Mf).
+% actualizarMatrizAux(I,J,H,M,E,Mf) :-
+actualizarMatrizAux(0,J,[],[F|T],E,Mf) :-
+    actualizarLista(F,J,E,Fn),
+    Mf = [Fn|T],
+    !.
+actualizarMatrizAux(0,J,H,[F|T],E,Mf) :-
+    actualizarLista(F,J,E,Fn),
+    Maux = [Fn|T],
+    append(H,Maux,Mf),!.
+actualizarMatrizAux(I,J,H,[F|T],E,Mf) :-
+    I1 is I - 1,
+    append(H,[F],Maux),
+    actualizarMatrizAux(I1,J,Maux,T,E,Mf).
+
 % obtenerFila(+F,+C,+M,+F1,Row) :- Se satisface si Row es la fila F1 del tablero
 %                                  de tamaño FxC, M. Debe cumplirse que F1 <= F.
-obtenerFila([H|T],0,Row) :-
+obtenerFila([H|_],0,Row) :-
     Row = H.
-obtenerFila([H|T],F1,Row) :-
+obtenerFila([_|T],F1,Row) :-
     F11 is F1 - 1,
     obtenerFila(T,F11,Row).
 
-% obtenerElemento(+L,+I,E) :- Se satisface si E es el I-ésimo elemento de la
+% obtenerElemLista(+L,+I,E) :- Se satisface si E es el I-ésimo elemento de la
 %                             lista L. Debe cumplirse: size(L,N), 0 =< I, I < N.
 obtenerElemLista([E|_],0,E).
 obtenerElemLista([_|T],I,E) :-
@@ -157,7 +200,7 @@ obtenerColumna(F,M,C,Col) :-
     obtColAux(F,F,M,C,[],Col).
 % obtColAux(+F1,+F,+M,+C,Col) :- Se satisface si Col es la columna C del
 %                        tablero con F filas, M. Debe cumplirse que 0 =< C.
-obtColAux(0,F,M,C,Laux,Col) :-
+obtColAux(0,_,_,_,Laux,Col) :-
     Laux = Col,!.
 obtColAux(F1,F,M,C,Laux,Col) :-
     I is F - F1,
@@ -177,7 +220,7 @@ colaLista(I,L,T) :-
 %                             con N = 0.
 colaListaAux(I,I,L,T) :-
     T = L,!.
-colaListaAux(N,I,[X|Xs],T) :-
+colaListaAux(N,I,[_|Xs],T) :-
     N1 is N + 1,
     colaListaAux(N1,I,Xs,T).
 
@@ -190,7 +233,7 @@ cabezaLista(T,L,H) :-
 %                                  T es un contador auxiliar que debe empezar
 %                                  con valor 0, y Laux es una lista acumuladora
 %                                  auxiliar que debe empezar con valor [].
-cabezaListaAux(0,L,Laux,H) :-
+cabezaListaAux(0,_,Laux,H) :-
     Laux = H,!.
 cabezaListaAux(T,[X|Xs],Laux,H) :-
     T1 is T - 1,
@@ -220,7 +263,7 @@ obtenerEspacio(T,v,F1,C1,L) :-
 
 % busqueda(+L,+E) :- Se satisface si el elemento E está en la lista L.
 busqueda([],_) :- fail.
-busqueda([E|T],E).
+busqueda([E|_],E).
 busqueda([_|T],E) :-
     busqueda(T,E).
 
@@ -254,18 +297,18 @@ tamanoValido(T) :-
     T =< F, T =< C,
     nl,!.
 
-% orientacionValida(D) :-  Pide por la entrada estándar, un valor para la direc-
-%                        ción de un barco, y verifica que sea válido. Si es in-
-%                        válido, vuelve a pedir el valor. Una vez obtenido un
+% orientacionValida(+D) :-  Pide por la entrada estándar, un valor para la di-
+%                        rección de un barco, y verifica que sea válido. Si es
+%                        inválido, vuelve a pedir el valor. Una vez obtenido un
 %                        valor válido, D queda instanciado a dicho valor.
 orientacionValida(v).
 orientacionValida(h).
 
-% disposicionValida(T,D,F1,C1) :- Solicita por la entrada estándar valores vá-
-%                       lidos para la disposición de un barco en el tablero. Una
-%                       vez obtenidos valores válidos, instancia F1 y C1 con di-
-%                       chos valores.
-disposicionValida(T,D,F1,C1) :-
+% disposicionValida(-T,-D,-F1,-C1) :- Solicita por la entrada estándar valores
+%                       válidos para la disposición de un barco en el tablero.
+%                       Una vez obtenidos valores válidos, instancia F1 y C1 con
+%                       dichos valores.
+disposicionValida(T,D,F,C) :-
     repeat,
     write('Ingrese el Tamaño\n>> '),
     read(T),nl,
@@ -280,17 +323,29 @@ disposicionValida(T,D,F1,C1) :-
     validarDireccion(T,D,F,C),
     !.
 
-% obtenerBarco(+F,+C) :- Pide al usuario por entrada estándar la información re-
-%                        lativa a un barco en específico, y almacena en la base
-%                        de conocimientos una estrucura que representa a dicho
-%                        barco. Además, se asegura de que el barco sea válido
-%                        para un tablero de dimensiones F filas y C columnas.
-obtenerBarco(F,C) :- write('Información de barco:'),nl,
-    disposicionValida(T,D,F1,C1),
-    assertz(barco(T,D,F1,C1,v)),
+% posicionarbarco(+T,+D,+F,+C,+TB,NTB) :- Se satisface si el tablero (lista de
+%                     listas) NTB es el resultado de colocar el barco de tamaño
+%                     T, orientación D, cuya primera casilla está en las coorde-
+%                     nadas (F,C) en el tablero (lista de listas) de TB.
+%posicionarbarco(T,v,F,C,TB,NTB) :-
+%posicionarbarco(T,h,F,C,TB,NTB) :-
+    
+    %FALTAAAAAA!!!!!!!
+
+% obtenerBarco :- Pide al usuario por entrada estándar la información re-
+%                 lativa a un barco en específico, y almacena en la base
+%                 de conocimientos una estrucura que representa a dicho
+%                 barco.
+obtenerBarco :-
+    write('Información de barco:'),nl,
+    disposicionValida(T,D,F,C),
+    assertz(barco(T,D,F,C,v)),
+    retract(disposicion(TB)),
+    posicionarbarco(T,D,F,C,TB,NTB),
+    asserta(disposicion(NTB)),
     write('Barco agregado con éxito!\n'),!.
 
-% obtenerBarcos(+F,+C,+NB) :- Se encarga de obtener de la entrada estándar,
+% obtenerBarcos(+NB) :-   Se encarga de obtener de la entrada estándar,
 %                         los parámetros que definen a cada barco, y almacenar
 %                         éstos en la base de conocimientos del programa. F es
 %                         el número de filas y C el número de columnas del ta-
@@ -298,11 +353,11 @@ obtenerBarco(F,C) :- write('Información de barco:'),nl,
 %                         solicitar al usuario. Además, agrega a la base de co-
 %                         nocimientos del programa una estructura que define los
 %                         parámetros iniciales de la partida.
-obtenerBarcos(F,C,0) :- !.
-obtenerBarcos(F,C,NB) :-
+obtenerBarcos(0) :- !.
+obtenerBarcos(NB) :-
     N1 is NB - 1,
-    obtenerBarco(F,C),
-    obtenerBarcos(F,C,N1).
+    obtenerBarco,
+    obtenerBarcos(N1).
 
 % iniLista(+X,Y) :- Inicializa una lista Y de tamaño X con puras a (agua)
 %                   dentro.
@@ -358,11 +413,11 @@ jugar :-
     obtenerDimensiones(F,C,NB),
     tableroInicial(F,C,TB),
     asserta(disposicion(TB)),
-    obtenerBarcos(F,C,NB),
+    obtenerBarcos(NB),
     obtenerNumBalas(B),
     tableroInicial(F,C,T),
-    barco(X1,X2,X3,X4,X5).
-    %hacerJugadas.
+    %hacerJugadas(B,T),
+    retractall(barco(_,_,_,_,_)).
 
 % tableroInicial(F,C,T) :- Se satisface si T representa un tablero de F filas
 %                           y C columnas donde todas sus posiciones corresponden
