@@ -1,6 +1,6 @@
 juego(a,b,c,15).
 :- dynamic disparo/2.
-disparo(0,3).
+disparo(2,1).
 disposicion([[a,b,a,a,a],[a,b,b,a,a],[a,a,a,a,a]]).
 
 % Inicializa una lista Y de tamaño X con puras 'a' dentro
@@ -92,67 +92,49 @@ actListaAux(L,Pc,Lac,Lf,E):-
 
 % Recorre lista de listas L0, hasta la posición Pf, luego llama a actLista.
 actListaLista(L0,L1,Pf,Pc,E):-
-	nl,
-	write('Entre a lista lista'),
-	nl,
-	write('Pf = '),
-	write(Pf),
-	nl,
 	actListaListaAux(L0,L1,Pf,Pc,[],E).
-actListaListaAux(L0,L1,0,Pc,Lcon,E):-
-	write('caso base donde kiero ver : Lcon = '),
-	write(Lcon),
+actListaListaAux(L0,L1,0,Pc,[],E):-
+	write('VACIO'),
 	nl,
 	L0= [X|Y],
 	actLista(X,Pc,Lf,E),
 	Ln= [Lf|Y],
-	nl,
-	write('caso base : Ln = '),
-	write(Ln),
-	nl,
-	append(Lcon,Ln,L1),
-	write('L1 = '),
-	write(L1),
-	nl.
+	L1 = Ln,
+	!.
+actListaListaAux(L0,L1,0,Pc,Lcon,E):-
+	write('NO VACIO'),nl,
+	L0= [X|Y],
+	actLista(X,Pc,Lf,E),
+	Ln= [Lf|Y],
+	Lconx = [Lcon],
+	append(Lconx,Ln,L1),
+	!.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% el peo está en lista lista recursiva
+actListaListaAux(L0,L1,Pf,Pc,[],E):-
+	L0 = [X|Y],
+	Pf1 is Pf-1,
+	actListaListaAux(Y,L1,Pf1,Pc,X,E),
+	!.
 actListaListaAux(L0,L1,Pf,Pc,Lcon,E):-
-	nl,
 	L0= [X|Y],
 	append(Lcon,X,Lcon1),
-	nl,
-	write(Lcon1),
-	nl,
 	Pf1 is Pf-1,
-	nl,
-	write(Pf1),
-	nl,
 	actListaListaAux(Y,L1,Pf1,Pc,Lcon1,E).
 	
 % Si es a cambia por f, si es b cambia por g
 esAoB(a,L0,L1,Pf,Pc):-
-	nl,
-	write('Entre en AoB con a'),
-	nl,
-	actListaLista(L0,L1,Pf,Pc,f),
+	%actListaLista(L0,L1,Pf,Pc,f),
+	
 	!.
 esAoB(b,L0,L1,Pf,Pc):-
-	actListaLista(L0,L1,Pf,Pc,g),
+	%actListaLista(L0,L1,Pf,Pc,g),
 	!.
 
 % Dibuja el resultado del ataque a T0 en T1
 ataque(T0,T1,_,_):- 
 	disparo(Df,Dc),
-	nl,
-	write(Df),
-	write('°°°°'),
-	write(Dc),
-	nl,
 	disposicion(Tt),
 	obtenerElemMatriz(Tt,Df,Dc,E),
-	nl,
-	write('E= '),
-	write(E),
-	nl,
 	esAoB(E,T0,T1,Df,Dc),
 	!.
 
@@ -165,27 +147,16 @@ siguienteDisparo(X,Y,X1,Y1,C):-
 % Auxiliar de siguienteDisparo
 dentroTablero(1,X,_,X1,Y1):-
 	Y1 = 0,
-	X1 is X+1,
-	nl,
-	write('macheo con 1'),
-	nl,
-	write(X1),
-	write('///'),
-	write(Y1),
-	nl.
+	X1 is X+1.
 	
 dentroTablero(_,X,Y,X1,Y1):-
 	Y1 is Y+1,
 	X1 is X,
 	!.
-	
-	
+		
 % Hace la jugada en general, osea hace varios ataques
 hacerJugadas(T0,T1,F,C):-
 	ataque(T0,T1,F,C),
-	write('T1 = '),
-	write(T1),
-	nl,
 	retract(disparo(X,Y)),
 	siguienteDisparo(X,Y,X1,Y1,C),
 	assertz(disparo(X1,Y1)).
@@ -220,8 +191,5 @@ imprimir:-
 	mostrarTablero(T2),
 	nl,
 	hacerJugadas(T2,T3,3,5),
-	nl,
-	write('T3 = '),
-	write(T3),
 	nl,
 	mostrarTablero(T3).
