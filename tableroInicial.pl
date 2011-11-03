@@ -1,6 +1,7 @@
 juego(a,b,c,15).
 :- dynamic disparo/2.
-disparo(2,1).
+:- dynamic hit/2.
+disparo(0,0).
 disposicion([[a,b,a,a,a],[a,b,b,a,a],[a,a,a,a,a]]).
 
 % Inicializa una lista Y de tamaño X con puras 'a' dentro
@@ -72,62 +73,51 @@ estadoFinalAux(T,N,Ac):-
 	estadoFinalAux(Y,N,Ac1).
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% parte 2
-% Recorre lista L elemento a elemento.
-% Lac tiene los valores anteriores al de la posicion Pc, Lf es donde kiero devolver algo que todavia no tengo claro, L tiene siempre la cola de la lista
-% inicial.
-actLista(L,Pc,Lf,E):-
-	actListaAux(L,Pc,[],Lf,E).
-	
-actListaAux(L,0,Lac,Lf,E):-
-	L= [_|Y],
-	Lo= [E|Y],% aca hacer verificación de si es agua pongo f si es barco g.
-	append(Lac,Lo,Lf),
-	!.
-	
-actListaAux(L,Pc,Lac,Lf,E):-
-	L= [X|Y],
-	append(Lac,[X],Laux),
-	Pc1 is Pc-1,
-	actListaAux(Y,Pc1,Laux,Lf,E).	
 
-% Recorre lista de listas L0, hasta la posición Pf, luego llama a actLista.
-actListaLista(L0,L1,Pf,Pc,E):-
-	actListaListaAux(L0,L1,Pf,Pc,[],E).
-actListaListaAux(L0,L1,0,Pc,[],E):-
-	write('VACIO'),
-	nl,
-	L0= [X|Y],
-	actLista(X,Pc,Lf,E),
-	Ln= [Lf|Y],
-	L1 = Ln,
-	!.
-actListaListaAux(L0,L1,0,Pc,Lcon,E):-
-	write('NO VACIO'),nl,
-	L0= [X|Y],
-	actLista(X,Pc,Lf,E),
-	Ln= [Lf|Y],
-	Lconx = [Lcon],
-	append(Lconx,Ln,L1),
-	!.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% el peo está en lista lista recursiva
-actListaListaAux(L0,L1,Pf,Pc,[],E):-
-	L0 = [X|Y],
-	Pf1 is Pf-1,
-	actListaListaAux(Y,L1,Pf1,Pc,X,E),
-	!.
-actListaListaAux(L0,L1,Pf,Pc,Lcon,E):-
-	L0= [X|Y],
-	append(Lcon,X,Lcon1),
-	Pf1 is Pf-1,
-	actListaListaAux(Y,L1,Pf1,Pc,Lcon1,E).
-	
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% codigo victor
+
+% actualizarLista(+L,+I,+E,Lf) :- Se satisface si Lf es una lista idéntica a L,
+%                 exceptuando en el elemento en la posición I, donde el elemento
+%                 original es sustituido por E.
+actualizarLista(L,I,E,Lf) :-
+    actualizarListaAux(I,[],E,L,Lf).
+% actualizarListaAux(I,H,E,T,Lf) :- Se satisface si Lf es una lista idéntica a
+%              L, exceptuando en el elemento en la posición I, donde el elemento
+%              original es sustituido por E. H es una lista auxiliar que acumula
+%              la cabeza recorrida de la lista.
+actualizarListaAux(0,H,E,[_|T],Lf) :-
+    Laux = [E|T],
+    append(H,Laux,Lf),!.
+actualizarListaAux(I,H,E,[E1|T],Lf) :-
+    I1 is I - 1,
+    append(H,[E1],Laux),
+    actualizarListaAux(I1,Laux,E,T,Lf).
+
+% actualizarMatriz(M,I,J,E,Mf) :-
+actualizarMatriz(M,I,J,E,Mf) :-
+    actualizarMatrizAux(I,J,[],M,E,Mf).
+% actualizarMatrizAux(I,J,H,M,E,Mf) :-
+actualizarMatrizAux(0,J,[],[F|T],E,Mf) :-
+    actualizarLista(F,J,E,Fn),
+    Mf = [Fn|T],
+    !.
+actualizarMatrizAux(0,J,H,[F|T],E,Mf) :-
+    actualizarLista(F,J,E,Fn),
+    Maux = [Fn|T],
+    append(H,Maux,Mf),!.
+actualizarMatrizAux(I,J,H,[F|T],E,Mf) :-
+    I1 is I - 1,
+    append(H,[F],Maux),
+    actualizarMatrizAux(I1,J,Maux,T,E,Mf).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Si es a cambia por f, si es b cambia por g
 esAoB(a,L0,L1,Pf,Pc):-
-	%actListaLista(L0,L1,Pf,Pc,f),
-	
+	actualizarMatriz(L0,Pf,Pc,f,L1),
 	!.
 esAoB(b,L0,L1,Pf,Pc):-
-	%actListaLista(L0,L1,Pf,Pc,g),
+	asserta(hit(Pf,Pc)),
+	actualizarMatriz(L0,Pf,Pc,g,L1),
 	!.
 
 % Dibuja el resultado del ataque a T0 en T1
@@ -154,12 +144,24 @@ dentroTablero(_,X,Y,X1,Y1):-
 	X1 is X,
 	!.
 		
-% Hace la jugada en general, osea hace varios ataques
-hacerJugadas(T0,T1,F,C):-
+% Hace la jugada en general,
+hacerJugada(T0,T1,F,C):-
 	ataque(T0,T1,F,C),
 	retract(disparo(X,Y)),
 	siguienteDisparo(X,Y,X1,Y1,C),
 	assertz(disparo(X1,Y1)).
+% Llama tantas veces como balas haya a hacerJugada.
+hacerJugadas(0,_,_,_,_):-
+	fail,
+	!.	
+hacerJugadas(B,T0,T1,F,C):-
+	hacerJugada(T0,T1,F,C),
+	write(B),
+	nl,
+	mostrarTablero(T1),
+	nl,
+	B1 is B-1,
+	hacerJugadas(B1,T1,T2,F,C).
 	
 
 % obtenerElemento(+L,+I,E) :- Se satisface si E es el I-ésimo elemento de la
@@ -183,13 +185,14 @@ obtenerElemMatriz(M,F,C,E) :-
 imprimir:-
 	tableroInicial(3,5,T),
 	mostrarTablero(T),
-	hacerJugadas(T,T1,3,5),
 	nl,
-	mostrarTablero(T1),
-	nl,
-	hacerJugadas(T1,T2,3,5),
-	mostrarTablero(T2),
-	nl,
-	hacerJugadas(T2,T3,3,5),
-	nl,
-	mostrarTablero(T3).
+	hacerJugadas(15,T,T1,3,5).
+	%hacerJugada(T,T1,3,5),
+	%mostrarTablero(T1),
+	%nl,
+	%hacerJugada(T1,T2,3,5),
+	%mostrarTablero(T2),
+	%nl,
+	%hacerJugada(T2,T3,3,5),
+	%mostrarTablero(T3),
+	%nl.
