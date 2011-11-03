@@ -44,10 +44,24 @@
 :- dynamic lista/1.
 :- dynamic matriz/1.
 
-% :- dynamic juego/4.
 % Estructura que guarda parámetros de inicialización de la partida. Éstos co-
 % rresponden:
 %   juego(#Filas, #Columnas, #Barcos, Suma de los tamaños de todos los barcos).
+:- dynamic juego/4.
+
+% Estructura que almacena las coordenadas de un disparo efectivo (que impactó en
+% algún barco).
+:- dynamic hit/2.
+
+% Estructura que almacena la información relativa a las características de un
+% barco en particular:
+%                          barco(T,O,F,C,V)
+% Donde: T = Tamaño del barco.
+%        O = Orientación del barco.
+%        F = Fila inicial del barco.
+%        C = Columna inicial del barco.
+%        v = Número de vidas restantes del barco.
+:- dynamic barco/5.
 
 
 
@@ -86,7 +100,8 @@ mensajeBienvenida :- write('                                     |__'),nl,
     write(' __..._____--==/___]_|__|_____________________________[___\\==--____,------\' .7'),nl,
     write('|              BIENVENIDO AL BATTLESHIP SOLITAIRE!!!!!!!!!            BB-61/'),nl,
     write(' \\_________________________________________________________________________|'),nl,
-    write(' Adaptación del ASCII art por Matthew Bace.'),nl,nl,
+    write('WwWwWwWwWwwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWw'),nl,
+    write(' Adaptación del ASCII art de Matthew Bace, por VD.'),nl,nl,
     write('Por Favor, para comenzar, introduzca la información solicitada...'),nl,
     write('Recuerde escribir un punto (.) después de cada valor introducido...'),
     nl,nl.
@@ -133,7 +148,7 @@ obtenerNumBalas(B) :-
     read(B),nl,
     juego(F,C,_,P),
     T is F * C + 1,
-    P < B, B < T,
+    P =< B, B < T,
     !.
 
 % actualizarLista(+L,+I,+E,Lf) :- Se satisface si Lf es una lista idéntica a L,
@@ -144,7 +159,7 @@ actualizarLista(L,I,E,Lf) :-
 % actualizarListaAux(I,H,E,T,Lf) :- Se satisface si Lf es una lista idéntica a
 %              L, exceptuando en el elemento en la posición I, donde el elemento
 %              original es sustituido por E. H es una lista auxiliar que acumula
-%              la cabeza recorrida de la lista.
+%              la cabeza recorrida de la lista. Utiliza recursión de cola.
 actualizarListaAux(0,H,E,[_|T],Lf) :-
     Laux = [E|T],
     append(H,Laux,Lf),!.
@@ -153,10 +168,16 @@ actualizarListaAux(I,H,E,[E1|T],Lf) :-
     append(H,[E1],Laux),
     actualizarListaAux(I1,Laux,E,T,Lf).
 
-% actualizarMatriz(M,I,J,E,Mf) :-
+% actualizarMatriz(M,I,J,E,Mf) :- Se satisface cuando Mf es una matriz (lista de
+%                listas) idéntica a M exceptuando en la posición (I,J) (0-index)
+%                donde el elemento anterior fué sustituido por E.
 actualizarMatriz(M,I,J,E,Mf) :-
     actualizarMatrizAux(I,J,[],M,E,Mf).
-% actualizarMatrizAux(I,J,H,M,E,Mf) :-
+% actualizarMatrizAux(I,J,H,M,E,Mf) :- Se satisface cuando Mf es una matriz
+%                (lista de listas) idéntica a M exceptuando en la posición (I,J)
+%                (0-index) donde el elemento anterior fué sustituido por E. H es
+%                una lista auxiliar que acumula las filas superiores de M. Uti-
+%                liza recursión de cola.
 actualizarMatrizAux(0,J,[],[F|T],E,Mf) :-
     actualizarLista(F,J,E,Fn),
     Mf = [Fn|T],
@@ -323,14 +344,38 @@ disposicionValida(T,D,F,C) :-
     validarDireccion(T,D,F,C),
     !.
 
-% posicionarbarco(+T,+D,+F,+C,+TB,NTB) :- Se satisface si el tablero (lista de
+% posicionarBarcoVertical(+T,+F,+C,+TB,NTB) :- Se satisface si el tablero (lista
+%                de listas) NTB es el resultado de colocar el barco de tamaño T,
+%                orientación Vertical, cuya primera casilla está en las coorde-
+%                nadas (F,C) en el tablero (lista de listas) de TB.
+posicionarBarcoVertical(0,_,_,TB,NTB) :-
+    NTB = TB,!.
+posicionarBarcoVertical(T,F,C,TB,NTB) :-
+    Tn is T - 1,
+    Fn is F + 1,
+    actualizarMatriz(TB,F,C,b,Tacc),
+    posicionarBarcoVertical(Tn,Fn,C,Tacc,NTB).
+
+% posicionarBarcoHorizontal(+T,+F,+C,+TB,NTB) :- Se satisface si el tablero
+%            (lista de listas) NTB es el resultado de colocar el barco de tamaño
+%            T, orientación Horizontal, cuya primera casilla está en las coorde-
+%            nadas (F,C) en el tablero (lista de listas) de TB.
+posicionarBarcoHorizontal(0,_,_,TB,NTB) :-
+    NTB = TB,!.
+posicionarBarcoHorizontal(T,F,C,TB,NTB) :-
+    Tn is T - 1,
+    Cn is C + 1,
+    actualizarMatriz(TB,F,C,b,Tacc),
+    posicionarBarcoVertical(Tn,F,Cn,Tacc,NTB).
+
+% posicionarBarco(+T,+D,+F,+C,+TB,NTB) :- Se satisface si el tablero (lista de
 %                     listas) NTB es el resultado de colocar el barco de tamaño
 %                     T, orientación D, cuya primera casilla está en las coorde-
 %                     nadas (F,C) en el tablero (lista de listas) de TB.
-%posicionarbarco(T,v,F,C,TB,NTB) :-
-%posicionarbarco(T,h,F,C,TB,NTB) :-
-    
-    %FALTAAAAAA!!!!!!!
+posicionarBarco(T,v,F,C,TB,NTB) :-
+    posicionarBarcoVertical(T,F,C,TB,NTB).
+posicionarBarco(T,h,F,C,TB,NTB) :-
+    posicionarBarcoHorizontal(T,F,C,TB,NTB).
 
 % obtenerBarco :- Pide al usuario por entrada estándar la información re-
 %                 lativa a un barco en específico, y almacena en la base
@@ -339,11 +384,17 @@ disposicionValida(T,D,F,C) :-
 obtenerBarco :-
     write('Información de barco:'),nl,
     disposicionValida(T,D,F,C),
-    assertz(barco(T,D,F,C,v)),
+    % Agrego al barco a la BD
+    assertz(barco(T,D,F,C,T)),
     retract(disposicion(TB)),
-    posicionarbarco(T,D,F,C,TB,NTB),
+    % Coloco el barco en el tablero de barcos
+    posicionarBarco(T,D,F,C,TB,NTB),
     asserta(disposicion(NTB)),
-    write('Barco agregado con éxito!\n'),!.
+    % Actualizo los parámetros de la partida
+    retract(juego(X1,X2,X3,NPB)),
+    NPBn is NPB + T,
+    assertz(juego(X1,X2,X3,NPBn)),
+    write('Barco agregado con éxito!\n\n'),!.
 
 % obtenerBarcos(+NB) :-   Se encarga de obtener de la entrada estándar,
 %                         los parámetros que definen a cada barco, y almacenar
@@ -398,6 +449,94 @@ itLaux(L,N,Ac):-
     esHlista(Z,Ac,Ac1),
     itLaux([X|Y],N,Ac1).
 
+% manejadorDisparoABarco(+T0,+X,+Y,+T,+O,+F,+C,T1) :- Se satisface cuando se han
+%   tomado las desiciones correctas al recibir las coordenadas (X,Y) de un dis-
+%   paro que se asume, pertenecen a algún barco, y se actualiza el tablero de
+%   acuerdo a las decisiones tomadas.
+manejadorDisparoABarco(T0,X,Y,T,O,F,C,T1) :-
+    barco(T,O,F,C,V),
+    perteneceAlBarco(X,Y,T,O,F,C),
+    retract(barco(T,O,F,C,V)),
+    V1 is V - 1,
+    assertz(barco(T,O,F,C,V1)),
+    hayQueHundirlo(T0,X,Y,T,O,F,C,V,T1).
+
+% perteneceAlBarco(+X,+Y,+T,+O,+F,+C) :- Se satisface si la casilla de coordena-
+%               das (X,Y) pertenece al barco de tamaño T, orientación O, cuya
+%               fila inicial es X, y su columna inicial es Y.
+perteneceAlBarco(X,Y,T,O,F,C) :-
+    pertBarcAux(X,Y,T,O,F,C).
+
+% pertBarcAux(+X,+Y,+T,+O,+F,+C) :- Se satisface si la casilla de coordenadas
+%               (X,Y) pertenece al barco de tamaño T, orientación O, cuya fila
+%               inicial es X, y su columna inicial es Y. Es un predicado auxi-
+%               liar de perteneceAlBarco/6, especializado según la orientación.
+pertBarcAux(X,Y,T,v,F,C) :-
+    Ff is F + T,
+    F =< X, X < Ff,
+    Y = C.
+pertBarcAux(X,Y,T,h,F,C) :-
+    Cf is C + T,
+    C =< Y, Y < Cf,
+    X = F.
+
+% golpearBarco(+X,+Y,+T0,+T,+O,+F,+C,T1) :- Se satisface si el tablero T1 es
+%  idéntico al tablero T0, excepto en una sóla casilla (X,Y) perteneciente al
+%  barco de tamaño T, orientación O, coordenadas iniciales (F,C).
+golpearBarco(T0,X,Y,T,O,F,C,T1) :-
+    actualizarMatriz(T0,X,Y,g,T1),
+    !.
+
+% hundirBarco(+T0,+T,+O,+F,+C,T1) :- Se satisface si el tablero T1 es idéntico
+%        al tablero T0, exceptuando en las casillas pertenecientes al barco de
+%        tamaño T, orientación O, coordenadas iniciales (F,C), las cuales serán
+%        actualizadas a "h", en representación de un barco hundido.
+hundirBarco(T0,T,O,F,C,T1) :-
+    hundirBarcoAux(T0,T,O,F,C,T1).
+
+% hundirBarcoAux(+T0,+T,+O,+F,+C,T1) :- Se satisface si el tablero T1 es idénti-
+%       co al tablero T0, exceptuando en las casillas pertenecientes al barco de
+%       tamaño T, orientación O, coordenadas iniciales (F,C), las cuales serán
+%       actualizadas a "h", en representación de un barco hundido.
+hundirBarcoAux(T0,T,v,F,C,T1) :-
+    hundirBarcoVertical(T0,T,F,C,T1).
+hundirBarcoAux(T0,T,h,F,C,T1) :-
+    hundirBarcoHorizontal(T0,T,F,C,T1).
+
+% hundirBarcoVertical(+T0,+T,+F,+C,T1) :- Se satisface si el tablero T1 es idén-
+%    tico al tablero T0, exceptuando en las casillas pertenecientes al barco de
+%    tamaño T, orientación Vertical, coordenadas iniciales (F,C), las cuales se-
+%    rán actualizadas a "h", en representación de un barco hundido.
+hundirBarcoVertical(T0,0,_,_,T1) :-
+    T1 = T0,!.
+hundirBarcoVertical(T0,T,F,C,T1) :-
+    Tn is T - 1,
+    Fn is F + 1,
+    actualizarMatriz(T0,F,C,h,Tacc),
+    hundirBarcoVertical(Tacc,Tn,Fn,C,T1).
+
+% hundirBarcoHorizontal(+T0,+T,+F,+C,T1) :- Se satisface si el tablero T1 es
+%    idéntico al tablero T0, exceptuando en las casillas pertenecientes al barco
+%    de tamaño T, orientación Horizontal, coordenadas iniciales (F,C), las cua-
+%    les serán actualizadas a "h", en representación de un barco hundido.
+hundirBarcoHorizontal(T0,0,_,_,T1) :-
+    T1 = T0,!.
+hundirBarcoHorizontal(T0,T,F,C,T1) :-
+    Tn is T - 1,
+    Cn is C + 1,
+    actualizarMatriz(T0,F,C,h,Tacc),
+    hundirBarcoVertical(Tacc,Tn,F,Cn,T1).
+
+% hayQueHundirlo(+T0,+X,+Y,+T,+O,+F,+C,+V,T1) :- Decide si actualizar el tablero
+%  T0 para hundir el barco por completo, o si sólo será golpeado, dependiendo de
+%  las vidas restantes del barco de tamaño T, orientación O, coordenadas inicia-
+%  les (F,C) con V vidas restantes (casillas intactas). El tablero actualizado
+%  unifica con T1.
+hayQueHundirlo(T0,X,Y,T,O,F,C,0,T1) :-
+    hundirBarco(T0,T,O,F,C,T1).
+hayQueHundirlo(T0,X,Y,T,O,F,C,_,T1) :-
+    golpearBarco(T0,X,Y,T,O,F,C,T1).
+
 %%%%%%%%%%%%%%%%%%%% PREDICADOS REQUERIDOS POR EL ENUNCIADO %%%%%%%%%%%%%%%%%%%%
 
 % jugar :- Se satisface una vez se ha obtenido las dimensiones del tablero, el
@@ -414,6 +553,8 @@ jugar :-
     tableroInicial(F,C,TB),
     asserta(disposicion(TB)),
     obtenerBarcos(NB),
+    disposicion(Tablero),
+    mostrarTablero(Tablero),
     obtenerNumBalas(B),
     tableroInicial(F,C,T),
     %hacerJugadas(B,T),
