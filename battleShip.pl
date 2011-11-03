@@ -40,14 +40,21 @@
 
 % BASE DE CONOCIMIENTOS ESTÁTICA:
 
+% Estructura que almacena las coordenadas del siguiente disparo a realizar.
+:- dynamic disparo/2.
+% Representa la primera posisión a apuntar en un disparo para completar la
+% estrategia.
+disparo(0,0).
+
 % BASE DE CONOCIMIENTOS DINÁMICA:
-:- dynamic lista/1.
-:- dynamic matriz/1.
 
 % Estructura que guarda parámetros de inicialización de la partida. Éstos co-
 % rresponden:
 %   juego(#Filas, #Columnas, #Barcos, Suma de los tamaños de todos los barcos).
 :- dynamic juego/4.
+
+% Estructura que almacena el número de balas iniciales.
+:- dynamic balas/1.
 
 % Estructura que almacena las coordenadas de un disparo efectivo (que impactó en
 % algún barco).
@@ -149,6 +156,7 @@ obtenerNumBalas(B) :-
     juego(F,C,_,P),
     T is F * C + 1,
     P =< B, B < T,
+    asserta(balas(B)),
     !.
 
 % actualizarLista(+L,+I,+E,Lf) :- Se satisface si Lf es una lista idéntica a L,
@@ -449,17 +457,20 @@ itLaux(L,N,Ac):-
     esHlista(Z,Ac,Ac1),
     itLaux([X|Y],N,Ac1).
 
-% manejadorDisparoABarco(+T0,+X,+Y,+T,+O,+F,+C,T1) :- Se satisface cuando se han
+% manejadorDisparoABarco(+T0,+X,+Y,T1) :- Se satisface cuando se han
 %   tomado las desiciones correctas al recibir las coordenadas (X,Y) de un dis-
 %   paro que se asume, pertenecen a algún barco, y se actualiza el tablero de
 %   acuerdo a las decisiones tomadas.
-manejadorDisparoABarco(T0,X,Y,T,O,F,C,T1) :-
+manejadorDisparoABarco(T0,X,Y,T1) :-
     barco(T,O,F,C,V),
     perteneceAlBarco(X,Y,T,O,F,C),
     retract(barco(T,O,F,C,V)),
     V1 is V - 1,
     assertz(barco(T,O,F,C,V1)),
-    hayQueHundirlo(T0,X,Y,T,O,F,C,V,T1).
+    write('Pregunto si hay que hundirlo...\nLe quedan vidas: '),
+    write(V1),
+    nl,
+    hayQueHundirlo(T0,X,Y,T,O,F,C,V1,T1).
 
 % perteneceAlBarco(+X,+Y,+T,+O,+F,+C) :- Se satisface si la casilla de coordena-
 %               das (X,Y) pertenece al barco de tamaño T, orientación O, cuya
@@ -480,10 +491,10 @@ pertBarcAux(X,Y,T,h,F,C) :-
     C =< Y, Y < Cf,
     X = F.
 
-% golpearBarco(+X,+Y,+T0,+T,+O,+F,+C,T1) :- Se satisface si el tablero T1 es
+% golpearBarco(+X,+Y,+T0,T1) :- Se satisface si el tablero T1 es
 %  idéntico al tablero T0, excepto en una sóla casilla (X,Y) perteneciente al
 %  barco de tamaño T, orientación O, coordenadas iniciales (F,C).
-golpearBarco(T0,X,Y,T,O,F,C,T1) :-
+golpearBarco(T0,X,Y,T1) :-
     actualizarMatriz(T0,X,Y,g,T1),
     !.
 
@@ -492,7 +503,11 @@ golpearBarco(T0,X,Y,T,O,F,C,T1) :-
 %        tamaño T, orientación O, coordenadas iniciales (F,C), las cuales serán
 %        actualizadas a "h", en representación de un barco hundido.
 hundirBarco(T0,T,O,F,C,T1) :-
-    hundirBarcoAux(T0,T,O,F,C,T1).
+    hundirBarcoAux(T0,T,O,F,C,T1),
+    retract(juego(X1,X2,X3,X4)),
+    X5 is X4 - 1,
+    asserta(juego(X1,X2,X3,X5)),
+    not(estadoFinal(T1)).
 
 % hundirBarcoAux(+T0,+T,+O,+F,+C,T1) :- Se satisface si el tablero T1 es idénti-
 %       co al tablero T0, exceptuando en las casillas pertenecientes al barco de
@@ -532,10 +547,64 @@ hundirBarcoHorizontal(T0,T,F,C,T1) :-
 %  las vidas restantes del barco de tamaño T, orientación O, coordenadas inicia-
 %  les (F,C) con V vidas restantes (casillas intactas). El tablero actualizado
 %  unifica con T1.
-hayQueHundirlo(T0,X,Y,T,O,F,C,0,T1) :-
-    hundirBarco(T0,T,O,F,C,T1).
-hayQueHundirlo(T0,X,Y,T,O,F,C,_,T1) :-
-    golpearBarco(T0,X,Y,T,O,F,C,T1).
+hayQueHundirlo(T0,_,_,T,O,F,C,0,T1) :-
+    hundirBarco(T0,T,O,F,C,T1),!.
+hayQueHundirlo(T0,X,Y,_,_,_,_,_,T1) :-
+    golpearBarco(T0,X,Y,T1).
+
+
+% Si es a cambia por f, si es b cambia por g
+esAoB(a,L0,L1,Pf,Pc):-
+    actualizarMatriz(L0,Pf,Pc,f,L1),
+    !.
+esAoB(b,L0,L1,Pf,Pc):-
+    asserta(hit(Pf,Pc)),
+    manejadorDisparoABarco(L0,Pf,Pc,L1),
+    %actualizarMatriz(L0,Pf,Pc,g,L1),
+    !.
+
+% ve si X llego al borde del tablero, la pone en 0, suma 1 a Y, de lo contrario solo suma 1 a X.
+siguienteDisparo(X,Y,X1,Y1,C):-
+    Yn is Y,
+    Yz is C-Yn,
+    dentroTablero(Yz,X,Y,X1,Y1).
+
+% Auxiliar de siguienteDisparo
+dentroTablero(1,X,_,X1,Y1):-
+    Y1 = 0,
+    X1 is X+1.
+
+dentroTablero(_,X,Y,X1,Y1):-
+    Y1 is Y+1,
+    X1 is X,
+    !.
+
+% Hace la jugada en general,
+hacerJugada(T0,T1,F,C):-
+    ataque(T0,T1,F,C),
+    retract(disparo(X,Y)),
+    siguienteDisparo(X,Y,X1,Y1,C),
+    assertz(disparo(X1,Y1)).
+% Llama tantas veces como balas haya a hacerJugada.
+hacerJugadas(0,T0,T1,F,C):-
+    tableroInicial(F,C,Ti),
+    balas(B),
+    backtracking(Ti,B),
+    !.
+hacerJugadas(B,T0,T1,F,C):-
+    hacerJugada(T0,T1,F,C),
+    % QUITAR ESTOOOO!!!!!!!!!!!!!!
+    write(B),
+    nl,
+    mostrarTablero(T1),
+    nl,
+    B1 is B-1,
+    hacerJugadas(B1,T1,T2,F,C).
+
+backtracking(T,B) :-
+    hacerHits(T,T1,B,B1),
+    juego(F,C,_,_),
+    hacerJugadas(B1,T1,_,F,C).
 
 %%%%%%%%%%%%%%%%%%%% PREDICADOS REQUERIDOS POR EL ENUNCIADO %%%%%%%%%%%%%%%%%%%%
 
@@ -557,8 +626,8 @@ jugar :-
     mostrarTablero(Tablero),
     obtenerNumBalas(B),
     tableroInicial(F,C,T),
-    %hacerJugadas(B,T),
-    retractall(barco(_,_,_,_,_)).
+    hacerJugadas(B,T,T1,F,C),
+    retractall(_).
 
 % tableroInicial(F,C,T) :- Se satisface si T representa un tablero de F filas
 %                           y C columnas donde todas sus posiciones corresponden
@@ -585,20 +654,16 @@ mostrarTablero(T):-
 % estadoFinal(T) :- Se satisface si en T se han hundido todos los barcos origi-
 %                   nalmente ocultos.
 estadoFinal(T):-
-    estadoFinalAux(T,N,0),
     juego(_,_,_,O),
-    O = N,
+    O < 1,
     !.
-estadoFinalAux([X|[]],N,Ac):-
-    iterLista(X,Nn),
-    N is Ac + Nn,
-    !.
-estadoFinalAux(T,N,Ac):-
-    T= [X|Y],
-    iterLista(X,Nn),
-    Ac1 is Ac+Nn,
-    estadoFinalAux(Y,N,Ac1).
 
 % ataque(+T0, T1, +F, +C) :- Se satisface los tableros T0 y T1 corresponden a
 %                           tableros con F filas y C columnas, y T1 corresponde
 %                           a realizar un disparo sobre el tablero T0.
+ataque(T0,T1,_,_):-
+    disparo(Df,Dc),
+    disposicion(Tt),
+    obtenerElemMatriz(Tt,Df,Dc,E),
+    esAoB(E,T0,T1,Df,Dc),
+    !.
